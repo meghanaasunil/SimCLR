@@ -3,7 +3,7 @@ from data_aug.gaussian_blur import GaussianBlur
 from torchvision import transforms, datasets
 from data_aug.view_generator import ContrastiveLearningViewGenerator
 from exceptions.exceptions import InvalidDatasetSelection
-
+from pacs_dataset import PACSDataset  # Import your PACS dataset class
 
 class ContrastiveLearningDataset:
     def __init__(self, root_folder):
@@ -21,7 +21,7 @@ class ContrastiveLearningDataset:
                                               transforms.ToTensor()])
         return data_transforms
 
-    def get_dataset(self, name, n_views):
+    def get_dataset(self, name, n_views, source_domains=None, target_domain=None):
         valid_datasets = {'cifar10': lambda: datasets.CIFAR10(self.root_folder, train=True,
                                                               transform=ContrastiveLearningViewGenerator(
                                                                   self.get_simclr_pipeline_transform(32),
@@ -32,7 +32,14 @@ class ContrastiveLearningDataset:
                                                           transform=ContrastiveLearningViewGenerator(
                                                               self.get_simclr_pipeline_transform(96),
                                                               n_views),
-                                                          download=True)}
+                                                          download=True),
+                          
+                          'pacs': lambda: PACSDataset(self.root_folder,
+                                                     domains=source_domains,
+                                                     exclude_domains=target_domain,
+                                                     transform=ContrastiveLearningViewGenerator(
+                                                         self.get_simclr_pipeline_transform(224),
+                                                         n_views))}
 
         try:
             dataset_fn = valid_datasets[name]

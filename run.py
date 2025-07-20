@@ -5,6 +5,7 @@ from torchvision import models
 from data_aug.contrastive_learning_dataset import ContrastiveLearningDataset
 from models.resnet_simclr import ResNetSimCLR
 from simclr import SimCLR
+import os
 
 model_names = sorted(name for name in models.__dict__
                      if name.islower() and not name.startswith("__")
@@ -14,7 +15,7 @@ parser = argparse.ArgumentParser(description='PyTorch SimCLR')
 parser.add_argument('-data', metavar='DIR', default='./datasets',
                     help='path to dataset')
 parser.add_argument('-dataset-name', default='stl10',
-                    help='dataset name', choices=['stl10', 'cifar10'])
+                    help='dataset name', choices=['stl10', 'cifar10', 'pacs'])
 parser.add_argument('-a', '--arch', metavar='ARCH', default='resnet18',
                     choices=model_names,
                     help='model architecture: ' +
@@ -51,10 +52,25 @@ parser.add_argument('--n-views', default=2, type=int, metavar='N',
                     help='Number of views for contrastive learning training.')
 parser.add_argument('--gpu-index', default=0, type=int, help='Gpu index.')
 
+# New arguments for domain-specific training
+parser.add_argument('--source-domains', nargs='+', type=str, default=None,
+                    help='Source domains for training (e.g., Photo Art Cartoon)')
+parser.add_argument('--target-domain', type=str, default=None,
+                    help='Target domain for testing (e.g., Sketch)')
+parser.add_argument('--experiment-name', type=str, default='default',
+                    help='Name for the experiment (used for saving checkpoints)')
+
 
 def main():
     args = parser.parse_args()
     assert args.n_views == 2, "Only two view training is supported. Please use --n-views 2."
+    
+    # Set experiment name for saving checkpoints
+    if args.experiment_name == 'default' and args.source_domains and args.target_domain:
+        args.experiment_name = f"{'_'.join(args.source_domains)}-to-{args.target_domain}"
+        
+    print(f"Running experiment: {args.experiment_name}")
+    
     # check if gpu training is available
     if not args.disable_cuda and torch.cuda.is_available():
         args.device = torch.device('cuda')
@@ -66,7 +82,13 @@ def main():
 
     dataset = ContrastiveLearningDataset(args.data)
 
-    train_dataset = dataset.get_dataset(args.dataset_name, args.n_views)
+    # Get dataset with domain-specific filtering
+    train_dataset = dataset.get_dataset(
+        args.dataset_name, 
+        args.n_views, 
+        source_domains=args.source_domains,
+        target_domain=[args.target_domain] if args.target_domain else None
+    )
 
     train_loader = torch.utils.data.DataLoader(
         train_dataset, batch_size=args.batch_size, shuffle=True,
@@ -79,10 +101,26 @@ def main():
     scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=len(train_loader), eta_min=0,
                                                            last_epoch=-1)
 
-    #  It’s a no-op if the 'gpu_index' argument is a negative integer or None.
+    #  It's a no-op if the 'gpu_index' argument is a negative integer or None.
     with torch.cuda.device(args.gpu_index):
         simclr = SimCLR(model=model, optimizer=optimizer, scheduler=scheduler, args=args)
         simclr.train(train_loader)
+        
+    # Save experiment results in a specific directory
+    if not os.path.exists('experiment_results'):
+        os.makedirs('experiment_results')
+        
+    # Copy the final checkpoint to the experiment results directory
+    checkpoint_dir = simclr.writer.log_dir
+    final_checkpoint = os.path.join(checkpoint_dir, f'checkpoint_{args.epochs:04d}.pth.tar')
+    if os.path.exists(final_checkpoint):
+        experiment_dir = os.path.join('experiment_results', args.experiment_name)
+        if not os.path.exists(experiment_dir):
+            os.makedirs(experiment_dir)
+        import shutil
+        shutil.copy2(final_checkpoint, os.path.join(experiment_dir, 'model.pth.tar'))
+        shutil.copy2(os.path.join(checkpoint_dir, 'config.yml'), os.path.join(experiment_dir, 'config.yml'))
+        print(f"Saved experiment results to {experiment_dir}")
 
 
 if __name__ == "__main__":
