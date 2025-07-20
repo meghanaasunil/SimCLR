@@ -3,7 +3,7 @@
 # Define variables
 DATA_PATH="/kaggle/input/pacs-dataset/PACS"  # Adjust path for Windows
 BATCH_SIZE=128
-EPOCHS=100
+EPOCHS=1
 ARCH="resnet50"
 OUT_DIM=128
 
