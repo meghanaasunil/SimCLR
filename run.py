@@ -6,6 +6,8 @@ from data_aug.contrastive_learning_dataset import ContrastiveLearningDataset
 from models.resnet_simclr import ResNetSimCLR
 from simclr import SimCLR
 import os
+import warnings
+warnings.filterwarnings("ignore")
 
 model_names = sorted(name for name in models.__dict__
                      if name.islower() and not name.startswith("__")
