@@ -110,28 +110,38 @@ def main():
         simclr.train(train_loader)
         
     # Save experiment results in a specific directory
-    if not os.path.exists('experiment_results'):
-        os.makedirs('experiment_results')
+    # Save experiment results in a specific directory
+if not os.path.exists('experiment_results'):
+    os.makedirs('experiment_results')
     
 # Copy the final checkpoint to the experiment results directory
-    checkpoint_dir = simclr.writer.log_dir
-    final_checkpoint = os.path.join(checkpoint_dir, f'checkpoint_{args.epochs:04d}.pth.tar')
-    if os.path.exists(final_checkpoint):
-        experiment_dir = os.path.join('experiment_results', args.experiment_name)
-        if not os.path.exists(experiment_dir):
-            os.makedirs(experiment_dir)
+checkpoint_dir = simclr.writer.log_dir
+final_checkpoint = os.path.join(checkpoint_dir, f'checkpoint_{args.epochs:04d}.pth.tar')
+if os.path.exists(final_checkpoint):
+    experiment_dir = os.path.join('experiment_results', args.experiment_name)
+    if not os.path.exists(experiment_dir):
+        os.makedirs(experiment_dir)
     
-        import shutil
+    import shutil
     # Copy the checkpoint
-        shutil.copy2(final_checkpoint, os.path.join(experiment_dir, 'model.pth.tar'))
+    shutil.copy2(final_checkpoint, os.path.join(experiment_dir, 'model.pth.tar'))
     
-    # Create a config file in the experiment directory
-        with open(os.path.join(experiment_dir, 'config.yml'), 'w') as outfile:
-            config_dict = vars(args)
-            yaml.dump(config_dict, outfile, default_flow_style=False)
+    # Create a clean config file with only necessary parameters
+    config_dict = {
+        'arch': args.arch,
+        'out_dim': args.out_dim,
+        'batch_size': args.batch_size,
+        'epochs': args.epochs,
+        'temperature': args.temperature,
+        'dataset_name': args.dataset_name,
+        'source_domains': args.source_domains,
+        'target_domain': args.target_domain
+    }
+    
+    with open(os.path.join(experiment_dir, 'config.yml'), 'w') as outfile:
+        yaml.dump(config_dict, outfile, default_flow_style=False)
     
     print(f"Saved experiment results to {experiment_dir}")
-    
 if __name__ == '__main__':
     main()
     

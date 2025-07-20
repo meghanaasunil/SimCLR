@@ -49,12 +49,28 @@ def main():
     checkpoint_dir = os.path.dirname(args.checkpoint)
     config_path = os.path.join(checkpoint_dir, 'config.yml')
     
+    # Default config values
+    config = {'arch': args.arch, 'out_dim': 128}
+    
+    # Try to load the config file, but handle potential errors
     if os.path.exists(config_path):
-        with open(config_path, 'r') as f:
-            config = yaml.load(f, Loader=yaml.FullLoader)
-        print(f"Loaded config from {config_path}")
+        try:
+            with open(config_path, 'r') as f:
+                loaded_config = yaml.safe_load(f)  # Use safe_load instead of load
+                
+            # Only take the keys we need from the loaded config
+            if loaded_config and isinstance(loaded_config, dict):
+                if 'arch' in loaded_config:
+                    config['arch'] = loaded_config['arch']
+                if 'out_dim' in loaded_config:
+                    config['out_dim'] = loaded_config['out_dim']
+                    
+            print(f"Loaded config from {config_path}")
+            
+        except Exception as e:
+            print(f"Error loading config from {config_path}: {e}")
+            print("Using default values instead")
     else:
-        config = {'arch': args.arch, 'out_dim': 128}
         print(f"Config not found at {config_path}, using default values")
     
     # Create the target dataset
