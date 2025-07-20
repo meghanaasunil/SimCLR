@@ -131,3 +131,7 @@ def main():
             yaml.dump(config_dict, outfile, default_flow_style=False)
     
     print(f"Saved experiment results to {experiment_dir}")
+    
+if __name__ == '__main__':
+    main()
+    
