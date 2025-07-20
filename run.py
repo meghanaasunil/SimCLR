@@ -109,21 +109,24 @@ def main():
         simclr.train(train_loader)
         
     # Save experiment results in a specific directory
-    if not os.path.exists('experiment_results'):
-        os.makedirs('experiment_results')
-        
-    # Copy the final checkpoint to the experiment results directory
-    checkpoint_dir = simclr.writer.log_dir
-    final_checkpoint = os.path.join(checkpoint_dir, f'checkpoint_{args.epochs:04d}.pth.tar')
-    if os.path.exists(final_checkpoint):
-        experiment_dir = os.path.join('experiment_results', args.experiment_name)
-        if not os.path.exists(experiment_dir):
-            os.makedirs(experiment_dir)
-        import shutil
-        shutil.copy2(final_checkpoint, os.path.join(experiment_dir, 'model.pth.tar'))
-        shutil.copy2(os.path.join(checkpoint_dir, 'config.yml'), os.path.join(experiment_dir, 'config.yml'))
-        print(f"Saved experiment results to {experiment_dir}")
-
-
-if __name__ == "__main__":
-    main()
+if not os.path.exists('experiment_results'):
+    os.makedirs('experiment_results')
+    
+# Copy the final checkpoint to the experiment results directory
+checkpoint_dir = simclr.writer.log_dir
+final_checkpoint = os.path.join(checkpoint_dir, f'checkpoint_{args.epochs:04d}.pth.tar')
+if os.path.exists(final_checkpoint):
+    experiment_dir = os.path.join('experiment_results', args.experiment_name)
+    if not os.path.exists(experiment_dir):
+        os.makedirs(experiment_dir)
+    
+    import shutil
+    # Copy the checkpoint
+    shutil.copy2(final_checkpoint, os.path.join(experiment_dir, 'model.pth.tar'))
+    
+    # Create a config file in the experiment directory
+    with open(os.path.join(experiment_dir, 'config.yml'), 'w') as outfile:
+        config_dict = vars(args)
+        yaml.dump(config_dict, outfile, default_flow_style=False)
+    
+    print(f"Saved experiment results to {experiment_dir}")

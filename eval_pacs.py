@@ -79,29 +79,44 @@ def main():
         pin_memory=True
     )
     
-    # Create the model
-    model = ResNetSimCLR(base_model=config['arch'], out_dim=config['out_dim'])
+    # Create the model - just the backbone without projection head
+    if config['arch'] == 'resnet18':
+        backbone = models.resnet18(pretrained=False)
+        feature_dim = 512
+    elif config['arch'] == 'resnet50':
+        backbone = models.resnet50(pretrained=False)
+        feature_dim = 2048
+    else:
+        raise ValueError(f"Unsupported architecture: {config['arch']}")
     
-    # Load the checkpoint
+    # Remove the final fully connected layer
+    backbone.fc = nn.Identity()
+    backbone = backbone.to(args.device)
+    
+    # Load the SimCLR model
+    simclr_model = ResNetSimCLR(base_model=config['arch'], out_dim=config['out_dim'])
     checkpoint = torch.load(args.checkpoint, map_location=args.device)
-    state_dict = checkpoint['state_dict']
-    model.load_state_dict(state_dict)
+    simclr_model.load_state_dict(checkpoint['state_dict'])
+    
+    # Extract the backbone weights and load them into our backbone model
+    for name, param in simclr_model.backbone.named_parameters():
+        if name.startswith('fc'):
+            continue  # Skip the projection head
+        backbone_name = name
+        backbone.state_dict()[backbone_name].copy_(param.data)
     
     # Create a linear classifier
-    feature_dim = 512 if config['arch'] == 'resnet18' else 2048
     num_classes = len(target_dataset.class_to_idx)
     classifier = nn.Linear(feature_dim, num_classes).to(args.device)
     
-    # Extract features from the backbone
-    model.eval()
-    model = model.to(args.device)
-    
     # Train linear classifier on features
+    backbone.eval()
     classifier.train()
     optimizer = torch.optim.Adam(classifier.parameters(), lr=0.001)
     criterion = nn.CrossEntropyLoss()
     
     print(f"Training linear classifier on features from {args.target_domain} domain")
+    print(f"Feature dimension: {feature_dim}, Number of classes: {num_classes}")
     
     # Training loop for the linear classifier
     for epoch in range(100):  # 100 epochs should be enough for the linear classifier
@@ -115,9 +130,7 @@ def main():
             
             # Extract features
             with torch.no_grad():
-                features = model.backbone(images)
-                # Remove the projection head
-                features = features.view(features.size(0), -1)
+                features = backbone(images)
             
             # Forward pass through classifier
             outputs = classifier(features)
@@ -150,8 +163,7 @@ def main():
             labels = labels.to(args.device)
             
             # Extract features
-            features = model.backbone(images)
-            features = features.view(features.size(0), -1)
+            features = backbone(images)
             
             # Forward pass through classifier
             outputs = classifier(features)
