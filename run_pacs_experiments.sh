@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Define variables
-DATA_PATH="C:\\Internship\\Contrastive Learning\\Datasets\\PACS"  # Adjust path for Windows
+DATA_PATH="/kaggle/input/pacs-dataset/PACS"  # Adjust path for Windows
 BATCH_SIZE=128
 EPOCHS=100
 ARCH="resnet50"
