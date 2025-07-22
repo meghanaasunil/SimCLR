@@ -1,0 +1,2 @@
+Target Domain: Art
+Accuracy: 21.92%

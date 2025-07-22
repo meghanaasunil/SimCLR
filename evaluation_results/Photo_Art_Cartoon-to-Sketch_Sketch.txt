@@ -1,0 +1,2 @@
+Target Domain: Sketch
+Accuracy: 23.49%

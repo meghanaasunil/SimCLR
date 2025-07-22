@@ -18,9 +18,9 @@ model_names = sorted(name for name in models.__dict__
 parser = argparse.ArgumentParser(description='Evaluate SimCLR on PACS dataset')
 parser.add_argument('-data', metavar='DIR', default='./datasets',
                     help='path to dataset')
-parser.add_argument('-a', '--arch', metavar='ARCH', default='resnet50',
-                    choices=model_names,
-                    help='model architecture')
+parser.add_argument('--arch', default='resnet50', choices=model_names,
+                    help='model architecture (default: resnet50)')
+parser.add_argument('--epochs', default=100, type=int, help='number of epochs')
 parser.add_argument('-j', '--workers', default=4, type=int, metavar='N',
                     help='number of data loading workers')
 parser.add_argument('-b', '--batch-size', default=256, type=int,
@@ -135,7 +135,7 @@ def main():
     print(f"Feature dimension: {feature_dim}, Number of classes: {num_classes}")
     
     # Training loop for the linear classifier
-    for epoch in range(100):  # 100 epochs should be enough for the linear classifier
+    for epoch in range(args.epochs): 
         correct = 0
         total = 0
         train_loss = 0.0
@@ -166,7 +166,7 @@ def main():
         # Print epoch statistics
         accuracy = 100 * correct / total
         if (epoch + 1) % 10 == 0:
-            print(f'Epoch [{epoch+1}/100], Loss: {train_loss/len(target_loader):.4f}, Accuracy: {accuracy:.2f}%')
+            print(f'Epoch [{epoch+1}/{args.epochs}], Loss: {train_loss/len(target_loader):.4f}, Accuracy: {accuracy:.2f}%')
     
     # Evaluate the final model
     classifier.eval()
@@ -208,3 +208,4 @@ def main():
 
 if __name__ == '__main__':
     main()
+    
