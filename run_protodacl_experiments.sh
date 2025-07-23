@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Define variables
-DATA_PATH="./datasets/PACS"
+DATA_PATH="/kaggle/input/pacs-dataset/PACS"
 BATCH_SIZE=64
 EPOCHS=100
 ARCH="resnet50"
