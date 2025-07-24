@@ -54,7 +54,14 @@ class ProtoDACL(object):
         
         for epoch_counter in range(self.args.epochs):
             for data in tqdm(train_loader):
-                # Unpack data which might be in different formats
+                # Print data format for debugging
+                print(f"Data type: {type(data)}")
+                if isinstance(data, list):
+                    print(f"List length: {len(data)}")
+                    for i, item in enumerate(data):
+                        print(f"Item {i} type: {type(item)}")
+                
+                # Handle different data formats
                 if isinstance(data, tuple) and len(data) == 2:
                     # Format: (images, labels)
                     if isinstance(data[0], list) and isinstance(data[1], tuple) and len(data[1]) == 2:
@@ -93,8 +100,53 @@ class ProtoDACL(object):
                             if isinstance(data[0], list):
                                 class_labels = class_labels.repeat(self.args.n_views)
                                 domain_labels = domain_labels.repeat(self.args.n_views)
+                elif isinstance(data, list):
+                    # Direct list format from some data loaders
+                    if len(data) >= 2:
+                        # Assume first item is images, second is labels
+                        images_part = data[0]
+                        labels_part = data[1] if len(data) > 1 else None
+                        
+                        # Handle images that might be a list of tensors
+                        if isinstance(images_part, list) and all(isinstance(img, torch.Tensor) for img in images_part):
+                            images = torch.cat(images_part, dim=0)
+                        else:
+                            images = images_part
+                            
+                        # Handle labels
+                        if labels_part is not None:
+                            if isinstance(labels_part, tuple) and len(labels_part) == 2:
+                                class_labels, domain_labels = labels_part
+                            elif isinstance(labels_part, list) and len(labels_part) == 2:
+                                class_labels, domain_labels = labels_part[0], labels_part[1]
+                            elif isinstance(labels_part, torch.Tensor):
+                                class_labels = labels_part
+                                domain_labels = torch.zeros_like(class_labels)
+                            else:
+                                # Fallback
+                                print(f"WARNING: Unexpected labels format: {type(labels_part)}")
+                                class_labels = torch.zeros(images.size(0), dtype=torch.long)
+                                domain_labels = torch.zeros(images.size(0), dtype=torch.long)
+                        else:
+                            # No labels provided
+                            class_labels = torch.zeros(images.size(0), dtype=torch.long)
+                            domain_labels = torch.zeros(images.size(0), dtype=torch.long)
+                            
+                        # Repeat labels if necessary (for multiple views)
+                        if isinstance(images_part, list) and len(images_part) > 1:
+                            if len(class_labels) * len(images_part) == images.size(0):
+                                class_labels = class_labels.repeat(len(images_part))
+                                domain_labels = domain_labels.repeat(len(images_part))
+                    else:
+                        # Just images with no labels
+                        images = data[0]
+                        class_labels = torch.zeros(images.size(0), dtype=torch.long)
+                        domain_labels = torch.zeros(images.size(0), dtype=torch.long)
                 else:
                     # Unexpected format
+                    print(f"Unexpected data format. Type: {type(data)}")
+                    if hasattr(data, '__dict__'):
+                        print(f"Data attributes: {data.__dict__}")
                     raise ValueError(f"Unexpected data format: {type(data)}")
                 
                 # Move data to device
