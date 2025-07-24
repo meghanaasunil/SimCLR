@@ -15,7 +15,7 @@ model_names = sorted(name for name in models.__dict__
                      and callable(models.__dict__[name]))
 
 parser = argparse.ArgumentParser(description='PyTorch ProtoDACL')
-parser.add_argument('-data', metavar='DIR', default='./datasets',
+parser.add_argument('-data', metavar='DIR', default='/kaggle/input/pacs-dataset/PACS',
                     help='path to dataset')
 parser.add_argument('--dataset-name', default='pacs',
                     help='dataset name', choices=['pacs'])
