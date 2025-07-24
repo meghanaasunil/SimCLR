@@ -4,6 +4,7 @@ from PIL import Image
 from torch.utils.data import Dataset
 from torchvision import transforms
 from data_aug.view_generator import ContrastiveLearningViewGenerator
+from data_aug.gaussian_blur import GaussianBlur  # Use the custom GaussianBlur from original SimCLR
 
 class ProtoDACLDataset(Dataset):
     """
@@ -122,12 +123,13 @@ class ProtoDACLDatasetWrapper:
         Similar to SimCLR but with potentially stronger augmentations.
         """
         color_jitter = transforms.ColorJitter(0.8 * s, 0.8 * s, 0.8 * s, 0.2 * s)
+        # Use the custom GaussianBlur implementation from the original SimCLR
         data_transforms = transforms.Compose([
             transforms.RandomResizedCrop(size=size),
             transforms.RandomHorizontalFlip(),
             transforms.RandomApply([color_jitter], p=0.8),
             transforms.RandomGrayscale(p=0.2),
-            transforms.GaussianBlur(kernel_size=int(0.1 * size)),
+            GaussianBlur(kernel_size=int(0.1 * size)),  # Using custom GaussianBlur
             transforms.ToTensor(),
             transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
         ])
