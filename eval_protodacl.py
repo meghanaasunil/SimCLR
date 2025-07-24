@@ -133,9 +133,10 @@ def main():
             class_labels, domain_labels = labels
             class_labels = class_labels.to(args.device)
             
-            # Extract features
+            # Extract features - making sure to get the backbone features, not the projection
             with torch.no_grad():
-                features, _ = model(images)
+                # Extract the backbone features directly to match classifier dimensions
+                features = model.backbone(images)
             
             # Forward pass through classifier
             outputs = classifier(features)

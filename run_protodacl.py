@@ -120,39 +120,42 @@ def main():
         protodacl = ProtoDACL(model=model, optimizer=optimizer, scheduler=scheduler, args=args)
         protodacl.train(train_loader)
         
-    # Save experiment results in a specific directory
-    if not os.path.exists('experiment_results'):
-        os.makedirs('experiment_results')
-        
+    # Save config directly to the experiment directory first
+    experiment_dir = os.path.join('experiment_results', args.experiment_name)
+    if not os.path.exists(experiment_dir):
+        os.makedirs(experiment_dir)
+    
+    # Create a clean config file with only necessary parameters
+    config_dict = {
+        'arch': args.arch,
+        'out_dim': args.out_dim,
+        'batch_size': args.batch_size,
+        'epochs': args.epochs,
+        'temperature': args.temperature,
+        'prototype_weight': args.prototype_weight,
+        'memory_size': args.memory_size,
+        'dataset_name': args.dataset_name,
+        'source_domains': args.source_domains,
+        'target_domain': args.target_domain
+    }
+    
+    # Save config to experiment directory
+    with open(os.path.join(experiment_dir, 'config.yml'), 'w') as outfile:
+        yaml.dump(config_dict, outfile, default_flow_style=False)
+    
+    print(f"Saved config to {os.path.join(experiment_dir, 'config.yml')}")
+    
     # Copy the final checkpoint to the experiment results directory
     checkpoint_dir = protodacl.writer.log_dir
     final_checkpoint = os.path.join(checkpoint_dir, f'checkpoint_{args.epochs:04d}.pth.tar')
     
     if os.path.exists(final_checkpoint):
-        experiment_dir = os.path.join('experiment_results', args.experiment_name)
-        if not os.path.exists(experiment_dir):
-            os.makedirs(experiment_dir)
-        
         import shutil
         # Copy the checkpoint
         shutil.copy2(final_checkpoint, os.path.join(experiment_dir, 'model.pth.tar'))
-        
-        # Create a clean config file with only necessary parameters
-        config_dict = {
-            'arch': args.arch,
-            'out_dim': args.out_dim,
-            'batch_size': args.batch_size,
-            'epochs': args.epochs,
-            'temperature': args.temperature,
-            'prototype_weight': args.prototype_weight,
-            'memory_size': args.memory_size,
-            'dataset_name': args.dataset_name,
-            'source_domains': args.source_domains,
-            'target_domain': args.target_domain
-        }
-        
-        with open(os.path.join(experiment_dir, 'config.yml'), 'w') as outfile:
-            yaml.dump(config_dict, outfile, default_flow_style=False)
+        print(f"Copied checkpoint to {os.path.join(experiment_dir, 'model.pth.tar')}")
+    else:
+        print(f"Warning: Checkpoint file {final_checkpoint} not found. No checkpoint copied.")
     
     print(f"Saved experiment results to {experiment_dir}")
 
