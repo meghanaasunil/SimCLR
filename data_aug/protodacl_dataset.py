@@ -37,6 +37,18 @@ class ProtoDACLDataset(Dataset):
             
         print(f"Using domains: {domains_to_use}")
         
+        # Map domain names to indices
+        self.domain_to_idx = {domain: idx for idx, domain in enumerate(all_domains)}
+        
+        # Check if all directories exist and print available paths for debugging
+        available_dirs = []
+        for dirpath, dirnames, _ in os.walk(root_dir):
+            available_dirs.extend([os.path.join(dirpath, d) for d in dirnames])
+        
+        print(f"Available directories in {root_dir}:")
+        for d in available_dirs:
+            print(f"  - {d}")
+        
         # Collect all image paths
         self.images = []
         self.class_labels = []
@@ -44,28 +56,43 @@ class ProtoDACLDataset(Dataset):
         
         # Map class names to indices
         self.class_to_idx = {}
-        # Map domain names to indices
-        self.domain_to_idx = {domain: idx for idx, domain in enumerate(all_domains)}
-        
         class_idx = 0
         
+        # Try to find domains in any subdirectory structure
+        domain_paths = {}
         for domain in domains_to_use:
-            domain_dir = os.path.join(root_dir, domain)
-            domain_idx = self.domain_to_idx[domain]
-            
-            # Check if domain directory exists
-            if not os.path.isdir(domain_dir):
-                print(f"Warning: Domain directory {domain_dir} not found")
+            # Direct path
+            direct_path = os.path.join(root_dir, domain)
+            if os.path.isdir(direct_path):
+                domain_paths[domain] = direct_path
                 continue
             
-            # Iterate through class directories
-            for class_name in sorted(os.listdir(domain_dir)):
-                class_dir = os.path.join(domain_dir, class_name)
-                
-                # Skip if not a directory
-                if not os.path.isdir(class_dir):
-                    continue
-                
+            # Search in subdirectories
+            for dirpath in available_dirs:
+                if os.path.basename(dirpath) == domain:
+                    domain_paths[domain] = dirpath
+                    break
+        
+        if not domain_paths:
+            print(f"WARNING: No domain directories found in {root_dir} or its subdirectories!")
+            print("Please check your dataset path and structure.")
+        
+        for domain, domain_dir in domain_paths.items():
+            domain_idx = self.domain_to_idx[domain]
+            print(f"Processing domain: {domain} from {domain_dir}")
+            
+            # Get class directories
+            class_dirs = []
+            for item in os.listdir(domain_dir):
+                item_path = os.path.join(domain_dir, item)
+                if os.path.isdir(item_path):
+                    class_dirs.append((item, item_path))
+            
+            # Sort class directories for consistency
+            class_dirs.sort()
+            
+            # Process each class directory
+            for class_name, class_dir in class_dirs:
                 # Add class to mapping if not already present
                 if class_name not in self.class_to_idx:
                     self.class_to_idx[class_name] = class_idx
@@ -82,7 +109,7 @@ class ProtoDACLDataset(Dataset):
                     self.class_labels.append(self.class_to_idx[class_name])
                     self.domain_labels.append(domain_idx)
         
-        print(f"Loaded {len(self.images)} images from {len(domains_to_use)} domains")
+        print(f"Loaded {len(self.images)} images from {len(domain_paths)} domains")
         print(f"Classes: {self.class_to_idx}")
         print(f"Domains: {self.domain_to_idx}")
     
