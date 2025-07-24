@@ -3,7 +3,7 @@ import torch
 from PIL import Image
 from torch.utils.data import Dataset
 from torchvision import transforms
-from data_aug.view_generator import ContrastiveLearningViewGenerator
+from data_aug.view_generator_protodacl import ProtoDACLViewGenerator
 from data_aug.gaussian_blur import GaussianBlur  # Use the custom GaussianBlur from original SimCLR
 
 class ProtoDACLDataset(Dataset):
@@ -131,7 +131,9 @@ class ProtoDACLDataset(Dataset):
             # If no transform is provided, at least convert to tensor
             img = transforms.ToTensor()(img)
         
-        return img, (torch.tensor(class_label), torch.tensor(domain_label))
+        # Return image and a tuple of (class_label, domain_label)
+        return img, (torch.tensor(class_label, dtype=torch.long), 
+                    torch.tensor(domain_label, dtype=torch.long))
 
 
 class ProtoDACLDatasetWrapper:
@@ -180,7 +182,7 @@ class ProtoDACLDatasetWrapper:
                 self.root_folder,
                 domains=source_domains,
                 exclude_domains=target_domain,
-                transform=ContrastiveLearningViewGenerator(
+                transform=ProtoDACLViewGenerator(
                     self.get_protodacl_pipeline_transform(224),
                     n_views
                 )

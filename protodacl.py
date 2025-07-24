@@ -53,18 +53,49 @@ class ProtoDACL(object):
         logging.info(f"Training with gpu: {not self.args.disable_cuda}.")
         
         for epoch_counter in range(self.args.epochs):
-            for images, labels in tqdm(train_loader):
-                # In PACS dataset, each sample has a class label and domain label
-                # Assuming labels are tuples (class_label, domain_label)
-                class_labels = labels[0] if isinstance(labels, tuple) else labels
-                domain_labels = labels[1] if isinstance(labels, tuple) else torch.zeros_like(labels)
-                
-                # Get the two views for each image
-                if isinstance(images, list) and len(images) == self.args.n_views:
-                    # SimCLR-style with two views per image
-                    images = torch.cat(images, dim=0)
-                    class_labels = class_labels.repeat(self.args.n_views)
-                    domain_labels = domain_labels.repeat(self.args.n_views)
+            for data in tqdm(train_loader):
+                # Unpack data which might be in different formats
+                if isinstance(data, tuple) and len(data) == 2:
+                    # Format: (images, labels)
+                    if isinstance(data[0], list) and isinstance(data[1], tuple) and len(data[1]) == 2:
+                        # Format: ([view1, view2, ...], (class_labels, domain_labels))
+                        images = torch.cat(data[0], dim=0)
+                        class_labels, domain_labels = data[1]
+                        # Repeat labels for each view
+                        class_labels = class_labels.repeat(self.args.n_views)
+                        domain_labels = domain_labels.repeat(self.args.n_views)
+                    else:
+                        # Legacy format
+                        images, labels = data
+                        if isinstance(images, list):
+                            images = torch.cat(images, dim=0)
+                        
+                        # Handle different possible formats of labels
+                        if isinstance(labels, tuple) and len(labels) == 2:
+                            # Tuple with (class_labels, domain_labels)
+                            class_labels, domain_labels = labels
+                            # Repeat labels for each view if images were a list
+                            if isinstance(data[0], list):
+                                class_labels = class_labels.repeat(self.args.n_views)
+                                domain_labels = domain_labels.repeat(self.args.n_views)
+                        elif isinstance(labels, list) and len(labels) == 2:
+                            # List with [class_labels, domain_labels]
+                            class_labels, domain_labels = labels[0], labels[1]
+                            # Repeat labels for each view if images were a list
+                            if isinstance(data[0], list):
+                                class_labels = class_labels.repeat(self.args.n_views)
+                                domain_labels = domain_labels.repeat(self.args.n_views)
+                        else:
+                            # Only class labels provided, create dummy domain labels
+                            class_labels = labels
+                            domain_labels = torch.zeros_like(class_labels)
+                            # Repeat labels for each view if images were a list
+                            if isinstance(data[0], list):
+                                class_labels = class_labels.repeat(self.args.n_views)
+                                domain_labels = domain_labels.repeat(self.args.n_views)
+                else:
+                    # Unexpected format
+                    raise ValueError(f"Unexpected data format: {type(data)}")
                 
                 # Move data to device
                 images = images.to(self.args.device)
